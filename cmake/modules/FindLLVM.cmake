@@ -1,0 +1,58 @@
+find_program(LLVM_CONFIG llvm-config)
+if (LLVM_CONFIG)
+else(LLVM_CONFIG)
+    message(FATAL_ERROR "*** llvm-config is not found ***")
+endif(LLVM_CONFIG)
+
+# llvm version check
+execute_process(
+    COMMAND ${LLVM_CONFIG} --version
+    OUTPUT_VARIABLE LLVM_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+string (REGEX REPLACE "^([0-9]+)\\.([0-9]+).*" "\\1" LLVM_VERSION_MAJOR 
+    "${LLVM_VERSION}")
+string(REGEX REPLACE "^([0-9]+)\\.([0-9]+).*" "\\2" LLVM_VERSION_MINOR 
+    "${LLVM_VERSION}")
+message (STATUS "Found LLVM")
+message (STATUS "  LLVM_VERSION_MAJOR = ${LLVM_VERSION_MAJOR}")
+message (STATUS "  LLVM_VERSION_MINOR = ${LLVM_VERSION_MINOR}")
+
+execute_process(
+    COMMAND ${LLVM_CONFIG} --includedir
+    OUTPUT_VARIABLE LLVM_INCLUDE_DIRS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+execute_process(
+    COMMAND ${LLVM_CONFIG} --libdir
+    OUTPUT_VARIABLE LLVM_LIBRARY_DIRS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+execute_process(
+    COMMAND ${LLVM_CONFIG} --libs
+    OUTPUT_VARIABLE LLVM_LIBS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+execute_process(
+    COMMAND ${LLVM_CONFIG} --cppflags
+    OUTPUT_VARIABLE LLVM_CPPFLAGS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+execute_process(
+    COMMAND ${LLVM_CONFIG} --cxxflags
+    OUTPUT_VARIABLE LLVM_CXXFLAGS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+execute_process(
+    COMMAND ${LLVM_CONFIG} --ldflags
+    OUTPUT_VARIABLE LLVM_LDFLAGS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+execute_process(
+    COMMAND ${LLVM_CONFIG} --system-libs
+    OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+set(LLVM_FOUND TRUE)

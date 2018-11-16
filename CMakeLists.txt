@@ -14,6 +14,9 @@ else()
     include_directories(${ARROW_INCLUDE_DIR})
 endif()
 
+find_package(LLVM REQUIRED)
+find_package(Clang REQUIRED)
+
 # inclusion
 include_directories(${PROJECT_SOURCE_DIR}/src)
 
