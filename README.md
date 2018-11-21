@@ -3,9 +3,10 @@
 
 ## TODO
 - understand `clang/llvm`
-    - parse headers
-    - build `AST`
-    - dump/analyze nodes of AST
+    - [x] parse sources/headers
+    - [x] build `AST`
+    - [x] dump/analyze nodes of AST
+    - [x] clang::{RecursiveASTVisitor, ASTConsumer, FrontendAction, etc...}
     - understand how to generate functionality based on the parsed class declarations
     - _do we need cling in here???_
 - ...
