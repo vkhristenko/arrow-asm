@@ -1,55 +1,68 @@
+#include <iostream>
+
+#include "clang//AST/RecursiveASTVisitor.h"
 #include "clang/AST/ASTConsumer.h"
-#include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Tooling/Tooling.h"
 
-using namespace clang;
-
 class FindNamedClassVisitor
-  : public RecursiveASTVisitor<FindNamedClassVisitor> {
-public:
-  explicit FindNamedClassVisitor(ASTContext *Context)
-    : Context(Context) {}
+    : public clang::RecursiveASTVisitor<FindNamedClassVisitor> {
 
-  bool VisitCXXRecordDecl(CXXRecordDecl *Declaration) {
-    if (Declaration->getQualifiedNameAsString() == "n::m::C") {
-      FullSourceLoc FullLocation = Context->getFullLoc(Declaration->getLocStart());
-      if (FullLocation.isValid())
-        llvm::outs() << "Found declaration at "
-                     << FullLocation.getSpellingLineNumber() << ":"
-                     << FullLocation.getSpellingColumnNumber() << "\n";
+public:
+    FindNamedClassVisitor(clang::ASTContext* ctx, std::string const& ss)
+        : ctx{ctx}, ss{ss} {}
+
+    bool VisitCXXRecordDecl(clang::CXXRecordDecl* decl) {
+        if (decl->getQualifiedNameAsString() == ss) {
+            clang::FullSourceLoc full_loc = ctx->getFullLoc(decl->getLocStart());
+            if (full_loc.isValid())
+                llvm::outs() << "found declaration at "
+                             << full_loc.getSpellingLineNumber() << ":"
+                             << full_loc.getSpellingColumnNumber() << "\n";
+        }
+
+        return true;
     }
-    return true;
-  }
 
 private:
-  ASTContext *Context;
+    clang::ASTContext* ctx;
+    std::string ss;
 };
 
 class FindNamedClassConsumer : public clang::ASTConsumer {
 public:
-  explicit FindNamedClassConsumer(ASTContext *Context)
-    : Visitor(Context) {}
+    explicit FindNamedClassConsumer(clang::ASTContext* ctx, std::string const& ss)
+        : visitor{ctx, ss} {}
 
-  virtual void HandleTranslationUnit(clang::ASTContext &Context) {
-    Visitor.TraverseDecl(Context.getTranslationUnitDecl());
-  }
+    virtual void HandleTranslationUnit(clang::ASTContext& ctx) {
+        visitor.TraverseDecl(ctx.getTranslationUnitDecl());
+    }
+
 private:
-  FindNamedClassVisitor Visitor;
+    FindNamedClassVisitor visitor;
 };
 
 class FindNamedClassAction : public clang::ASTFrontendAction {
 public:
-  virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
-    clang::CompilerInstance &Compiler, llvm::StringRef InFile) {
-    return std::unique_ptr<clang::ASTConsumer>(
-        new FindNamedClassConsumer(&Compiler.getASTContext()));
-  }
+    explicit FindNamedClassAction(std::string const& ss)
+        : ss{ss} {}
+
+    virtual std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
+        clang::CompilerInstance& compiler, llvm::StringRef inFile) {
+        return std::unique_ptr<clang::ASTConsumer>{
+            new FindNamedClassConsumer{&compiler.getASTContext(), ss}
+        };
+    }
+
+private:
+    std::string ss;
 };
 
 int main(int argc, char **argv) {
-  if (argc > 1) {
-    clang::tooling::runToolOnCode(new FindNamedClassAction, argv[1]);
-  }
+    if (argc > 2) {
+        clang::tooling::runToolOnCode(new FindNamedClassAction{argv[1]}, argv[2]);
+    } else {
+        std::cout << "./run <class decl to search> <input stream>\n";
+    }
 }

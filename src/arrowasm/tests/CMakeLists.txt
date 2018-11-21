@@ -1,6 +1,6 @@
 file(GLOB TESTS *.cpp)
 link_directories(${LLVM_LIBRARY_DIRS})
-set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${LLVM_CXXFLAGS})
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} "${LLVM_CXXFLAGS} --std=c++17")
 foreach(TEST ${TESTS})
     get_filename_component(EXE ${TEST} NAME_WE)
     add_executable(${EXE} ${TEST})
