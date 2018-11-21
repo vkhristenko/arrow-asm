@@ -3,11 +3,11 @@
 
 ## TODO
 - understand `clang/llvm`
- - parse headers
- - build `AST`
- - dump/analyze nodes of AST
- - understand how to generate functionality based on the parsed class declarations
- - _do we need cling in here???_
+    - parse headers
+    - build `AST`
+    - dump/analyze nodes of AST
+    - understand how to generate functionality based on the parsed class declarations
+    - _do we need cling in here???_
 - ...
 
 ## Workflow
