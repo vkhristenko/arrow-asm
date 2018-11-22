@@ -1,0 +1,11 @@
+int func1(int a, int b) {
+    return a+b;
+}
+
+void do_nothing() {
+}
+
+void test_if(bool q) {
+    if (q) 
+        return;
+}

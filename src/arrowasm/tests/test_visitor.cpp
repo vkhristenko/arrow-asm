@@ -12,12 +12,39 @@
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
 
+class RecordAnalyzer {
+public:
+    RecordAnalyzer(clang::CXXRecordDecl& decl):
+        decl{decl}
+    {}
+
+    void print() const {
+        llvm::errs() << "--------------------\n";
+        decl.dump();
+        llvm::errs() << "--------------------\n";
+        for (auto const& field : decl.fields())
+            field->dump();
+        llvm::errs() << "--------------------\n";
+    }
+
+protected:
+    clang::CXXRecordDecl& decl;
+};
+
 // specify which nodes of the AST to look at
 class MyVisitor : public clang::RecursiveASTVisitor<MyVisitor> {
 public:
     MyVisitor(clang::Rewriter& r)
         : r{r}
     {}
+
+    bool VisitCXXRecordDecl(clang::CXXRecordDecl* decl) {
+        llvm::errs() << "** found a CXX Record Decl\n";
+        llvm::errs() << "class/struct " << decl->getQualifiedNameAsString() << "\n";
+        RecordAnalyzer{*decl}.print();
+
+        return true;
+    }
 
     bool VisitStmt(clang::Stmt* s) {
         llvm::errs() << "MyVisitor::VisitStmt\n"; 
@@ -84,7 +111,6 @@ public:
         llvm::errs() << "** MyConsumer::HandleTopLevelDecl\n";
         for (clang::DeclGroupRef::iterator b=dr.begin(), e=dr.end(); b != e; ++b) {
             visitor.TraverseDecl(*b);
-            (*b)->dump();
         }
         
         return true;
