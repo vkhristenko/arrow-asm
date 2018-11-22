@@ -9,3 +9,9 @@ class B {
     float x, y, z;
     double q, t, v;
 };
+
+class C {
+    B b;
+    int x;
+    float q;
+};

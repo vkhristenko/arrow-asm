@@ -20,10 +20,19 @@ public:
 
     void print() const {
         llvm::errs() << "--------------------\n";
-        decl.dump();
+//        decl.dump();
         llvm::errs() << "--------------------\n";
-        for (auto const& field : decl.fields())
+        for (auto const& field : decl.fields()) {
+            llvm::errs() << "--- debuggin a field ---\n";
             field->dump();
+            clang::QualType qtype = field->getType();
+            clang::Type const* type = qtype.getTypePtr();
+            if (type->isFundamentalType() or type->isEnumeralType()) {
+                llvm::errs() << "of fundamental or enum type\n";
+            } else {
+                RecordAnalyzer{*type->getAsCXXRecordDecl()}.print();
+            }
+        }
         llvm::errs() << "--------------------\n";
     }
 
