@@ -1,17 +1,25 @@
+namespace v1 {
+
 struct A {
     int a, b, c;
     float x, y, z;
-    double q, t, v;
+    int q, t, v;
 };
 
 class B {
     int a, b, c;
     float x, y, z;
-    double q, t, v;
+    int q, t, v;
 };
 
+}
+
+namespace v2 {
+
 class C {
-    B b;
+    v1::B b;
     int x;
     float q;
 };
+
+}
