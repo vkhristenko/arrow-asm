@@ -45,7 +45,7 @@ public:
         // initialize a function
         outs.out << 
             "template<>\n"
-            "void fill_builder(arrow::StructBuilder* pbuilder, " + decl->getQualifiedNameAsString() + " const& s) {\n"
+            "void to_arrow_builder(arrow::StructBuilder* pbuilder, " + decl->getQualifiedNameAsString() + " const& s) {\n"
             "\tpbuilder->Append();\n";
         outs.types <<
             "template<>\n"
@@ -108,7 +108,7 @@ public:
                         field->getName(), types[qtype.getAsString()])
                 );
                 outs.out <<
-                    "\tfill_builder(static_cast<arrow::StructBuilder*>(pbuilder"
+                    "\tto_arrow_builder(static_cast<arrow::StructBuilder*>(pbuilder"
                     "->field_builder( "
                     << ifield 
                     << " )), s." << field->getName().str()
@@ -227,7 +227,7 @@ public:
     ArrowASMAction() {
         outs.out << 
             "template<typename T>\n"
-            "void fill_builder(arrow::StructBuilder*, T const&);\n";
+            "void to_arrow_builder(arrow::StructBuilder*, T const&);\n";
         outs.types <<
             "template<typename T>\n"
             "struct to_arrow_type {\n"
