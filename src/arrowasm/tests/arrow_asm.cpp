@@ -17,13 +17,18 @@
 #include "arrow/type.h"
 #include "arrow/pretty_print.h"
 
+struct output_streams {
+    std::stringstream out;
+    std::stringstream types;
+};
+
 // specify which nodes of the AST to look at
 class MyVisitor : public clang::RecursiveASTVisitor<MyVisitor> {
 public:
     MyVisitor(clang::Rewriter& r, std::map<std::string, 
         std::shared_ptr<arrow::DataType>>& types,
-        std::stringstream& out)
-        : rwr{r}, types{types}, out{out}
+        output_streams& outs)
+        : rwr{r}, types{types}, outs{outs}
     {}
 
     bool VisitCXXRecordDecl(clang::CXXRecordDecl* decl) {
@@ -38,9 +43,14 @@ public:
         std::vector<std::shared_ptr<arrow::Field>> fields;
 
         // initialize a function
-        out << 
+        outs.out << 
             "template<>\n"
-            "void fill_builder(arrow::StructBuilder* pbuilder, " + decl->getQualifiedNameAsString() + " const& s) {\n";
+            "void fill_builder(arrow::StructBuilder* pbuilder, " + decl->getQualifiedNameAsString() + " const& s) {\n"
+            "\tpbuilder->Append();\n";
+        outs.types <<
+            "template<>\n"
+            "std::shared_ptr<arrow::StructType> to_arrow_type( " + decl->getQualifiedNameAsString() + " const& s) {\n"
+            "\treturn std::make_shared<arrow::StructType>(std::vector<std::shared_ptr<arrow::Field>>{\n";
         
         // iterate and populate
         int ifield = 0;
@@ -62,21 +72,29 @@ public:
                         fields.push_back(std::make_shared<arrow::Field>(
                             field->getName().str(), 
                             std::make_shared<arrow::Int32Type>()));
-                        out <<
+                        outs.out <<
                             "\tstatic_cast<arrow::Int32Builder*>(pbuilder->field_builder( " 
                             << ifield 
                             << " ))->Append( s." << field->getName().str()
                             << " );\n";
+                        if (ifield>0) outs.types << ",";
+                        outs.types <<
+                            "\t\tstd::make_shared<arrow::Field>(\" " + field->getName().str()
+                            << " \", std::make_shared<arrow::Int32Type>(), false)\n";
                         break;
                     case clang::BuiltinType::Float:
                         fields.push_back(std::make_shared<arrow::Field>(
                             field->getName().str(), 
                             std::make_shared<arrow::FloatType>()));
-                        out <<
+                        outs.out <<
                             "\tstatic_cast<arrow::FloatBuilder*>(pbuilder->field_builder( " 
                             << ifield 
                             << " ))->Append( s." << field->getName().str()
                             << " );\n";
+                        if (ifield>0) outs.types << ",";
+                        outs.types <<
+                            "\t\tstd::make_shared<arrow::Field>(\" " + field->getName().str()
+                            << " \", std::make_shared<arrow::FloatType>(), false)\n";
                         break;
                     default:
                         throw std::runtime_error{"no proper type conversion for type: "};
@@ -86,19 +104,25 @@ public:
                     std::make_shared<arrow::Field>(
                         field->getName(), types[qtype.getAsString()])
                 );
-                out <<
+                outs.out <<
                     "\tfill_builder(static_cast<arrow::StructBuilder*>(pbuilder"
                     "->field_builder( "
                     << ifield 
-                    << " ), s." << field->getName().str()
+                    << " )), s." << field->getName().str()
                     << " );\n";
+                if (ifield>0) outs.types << ",";
+                outs.types <<
+                    "\t\tstd::make_shared<arrow::Field>(\" " + field->getName().str()
+                    << " \", to_arrow_type( s." << field->getName().str()
+                    << " ), false)\n"; 
             }
             ifield++;
 
         }
 
         // finalize a fucntion
-        out << "}\n";
+        outs.out << "}\n\n";
+        outs.types << "\t});\n}\n\n";
 
         //
         // create an entry
@@ -163,15 +187,15 @@ public:
 private:
     clang::Rewriter &rwr;
     std::map<std::string, std::shared_ptr<arrow::DataType>>& types;
-    std::stringstream& out;
+    output_streams& outs;
 };
 
 class MyConsumer : public clang::ASTConsumer {
 public:
     MyConsumer(clang::Rewriter &r, 
         std::map<std::string, std::shared_ptr<arrow::DataType>>& types,
-        std::stringstream& out) 
-        : visitor{r, types, out}
+        output_streams& outs) 
+        : visitor{r, types, outs}
     {}
 
     // gets called for each parsed top-level declaration
@@ -197,16 +221,19 @@ private:
 class ArrowASMAction : public clang::ASTFrontendAction {
 public:
     ArrowASMAction() {
-        out << 
+        outs.out << 
             "template<typename T>\n"
             "void fill_builder(arrow::StructBuilder*, T const&);\n";
+        outs.types <<
+            "template<typename T>\n"
+            "std::shared_ptr<arrow::StructType> to_arrow_type(T const&);\n";
     }
 
     std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
             clang::CompilerInstance& ci, llvm::StringRef file) override {
         llvm::errs() << "*** create ast consumer for " << file << "\n";
         rwr.setSourceMgr(ci.getSourceManager(), ci.getLangOpts());
-        return std::make_unique<MyConsumer>(rwr, types, out);
+        return std::make_unique<MyConsumer>(rwr, types, outs);
     }
 
     void EndSourceFileAction() override {
@@ -220,12 +247,14 @@ public:
             std::cout << "\n";
         }
 
-        std::cout << "\n" << out.str() << std::endl;
+        std::cout << "\n" << outs.out.str() << std::endl;
+        std::cout << "\n\n\n";
+        std::cout << "\n" << outs.types.str() << std::endl;
     }
 
 private:
     clang::Rewriter rwr;
-    std::stringstream out;
+    output_streams outs;
     std::map<std::string, std::shared_ptr<arrow::DataType>> types;
 };
 
