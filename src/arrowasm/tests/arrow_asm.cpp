@@ -49,8 +49,9 @@ public:
             "\tpbuilder->Append();\n";
         outs.types <<
             "template<>\n"
-            "std::shared_ptr<arrow::StructType> to_arrow_type( " + decl->getQualifiedNameAsString() + " const& s) {\n"
-            "\treturn std::make_shared<arrow::StructType>(std::vector<std::shared_ptr<arrow::Field>>{\n";
+            "struct to_arrow_type<" << decl->getQualifiedNameAsString() << "> {\n"
+            "\tstatic std::shared_ptr<arrow::StructType> get() {\n"
+            "\t\treturn std::make_shared<arrow::StructType>(std::vector<std::shared_ptr<arrow::Field>>{\n";
         
         // iterate and populate
         int ifield = 0;
@@ -77,9 +78,10 @@ public:
                             << ifield 
                             << " ))->Append( s." << field->getName().str()
                             << " );\n";
-                        if (ifield>0) outs.types << ",";
+                        outs.types << "\t\t\t";
+                        if (ifield>0) outs.types<< ",";
                         outs.types <<
-                            "\t\tstd::make_shared<arrow::Field>(\" " + field->getName().str()
+                            "std::make_shared<arrow::Field>(\" " + field->getName().str()
                             << " \", std::make_shared<arrow::Int32Type>(), false)\n";
                         break;
                     case clang::BuiltinType::Float:
@@ -91,9 +93,10 @@ public:
                             << ifield 
                             << " ))->Append( s." << field->getName().str()
                             << " );\n";
+                        outs.types << "\t\t\t";
                         if (ifield>0) outs.types << ",";
                         outs.types <<
-                            "\t\tstd::make_shared<arrow::Field>(\" " + field->getName().str()
+                            "std::make_shared<arrow::Field>(\" " + field->getName().str()
                             << " \", std::make_shared<arrow::FloatType>(), false)\n";
                         break;
                     default:
@@ -110,11 +113,12 @@ public:
                     << ifield 
                     << " )), s." << field->getName().str()
                     << " );\n";
+                outs.types << "\t\t\t";
                 if (ifield>0) outs.types << ",";
                 outs.types <<
-                    "\t\tstd::make_shared<arrow::Field>(\" " + field->getName().str()
-                    << " \", to_arrow_type( s." << field->getName().str()
-                    << " ), false)\n"; 
+                    "std::make_shared<arrow::Field>(\" " + field->getName().str()
+                    << " \", to_arrow_type< " << qtype.getAsString() << " >::get()"
+                    ", false)\n"; 
             }
             ifield++;
 
@@ -122,7 +126,7 @@ public:
 
         // finalize a fucntion
         outs.out << "}\n\n";
-        outs.types << "\t});\n}\n\n";
+        outs.types << "\t\t});\n\t}\n};\n\n";
 
         //
         // create an entry
@@ -226,7 +230,9 @@ public:
             "void fill_builder(arrow::StructBuilder*, T const&);\n";
         outs.types <<
             "template<typename T>\n"
-            "std::shared_ptr<arrow::StructType> to_arrow_type(T const&);\n";
+            "struct to_arrow_type {\n"
+            "\tstatic std::shared_ptr<arrow::StructType> get();\n"
+            "};\n";
     }
 
     std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
@@ -240,12 +246,13 @@ public:
         clang::SourceManager& sm = rwr.getSourceMgr();
         rwr.getEditBuffer(sm.getMainFileID()).write(llvm::outs());
 
+        /*
         for (auto const& [key, value] : types) {
             std::cout << "struct " << key << std::endl;
             auto schema = std::make_shared<arrow::Schema>(value->children());
             arrow::PrettyPrint(*schema, {2}, &(std::cout));
             std::cout << "\n";
-        }
+        }*/
 
         std::cout << "\n" << outs.out.str() << std::endl;
         std::cout << "\n\n\n";
